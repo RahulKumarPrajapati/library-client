@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<head>
+    <title>Library Management</title>
+    <link href="../../../css/bootstrap.min.css" rel="stylesheet">
+    <script src="../../../js/bootstrap.min.js"></script>
+</head>
+<body>
+    <div class=" mb-3">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+            <a class="navbar-brand" href="#">Library Management System</a>
+            <a id="loginLogout" class="navbar-brand float-right" href="/index.html">Login/SignUp</a>
+            </div>
+        </nav>
+    </div>
+    <div class="container">
+        <div id="home" class="container mt-4">
+            <div id="availableBooks"></div>
+            <div id="borrowedBooksHistory"></div>
+        </div>
+        
+    </div>
+    <div class="modal fade" id="editBookModal" tabindex="-1" aria-labelledby="editBookModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="editBookModalLabel">Edit Book</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="editBookForm">
+                <div class="mb-3">
+                  <label for="bookname" class="form-label">Name</label>
+                  <input type="text" class="form-control" id="bookname" required>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="saveEditBook">Save changes</button>
+            </div>
+          </div>
+        </div>
+    </div>
+    <div class="modal fade" id="addBookModal" tabindex="-1" aria-labelledby="addBookModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="addBookModalLabel">Add Book</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="addBookForm">
+                <div class="mb-3">
+                  <label for="name" class="form-label">Name</label>
+                  <input type="text" class="form-control" id="name" required>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="addBook">Add</button>
+            </div>
+          </div>
+        </div>
+    </div>
+    <script src="../../../js/jquery.min.js"></script>
+    <script src="../../../CONSTANT.js"></script>
+    <script src="../../../main.js"></script>
+    <script>
+        const user = JSON.parse(localStorage.getItem('user'));
+        const isLibrarian = user.role === ROLE.LIBRARIAN ? true : false;
+        let tr_a = "", tr_bh= "";
+        function getAllBooks(){
+            tr_a = "";
+            $.get(`${apiUrl}/api/books/getBooks`, { availableOnly: false })
+                .done((data) => {
+                    if(data.length){
+                        for(let i= 0; i< data.length; i++){
+                            tr_a += `<tr>
+                                    <td>${i+1}</td>
+                                    <td>${data[i].name}</td>
+                                    <td>${data[i].available ? 'AVAILABLE': 'BORROWED'}</td>
+                                    <td>${data[i].available ? `<button class='btn btn-primary' data-bs-toggle='modal' data-bs-target='#editBookModal' onclick="editBook('${data[i]._id}','${data[i].name}')">Edit</button> <button class='btn btn-danger' onclick="deleteBook('${data[i]._id}')">Delete</button>` : ""}</td>
+                                </tr>
+                            `
+                        }
+                    }
+                    else{
+                        tr_a = `
+                            <tr><td class="text-center text-nowrap" colSpan="4">No Books Found</td></tr>
+                        `
+                    }
+                    getBooks()
+                })
+                .fail(function () {
+                    alert('Error Fetching Books');
+                });
+        }
+
+        function getBooks(){
+            document.getElementById("availableBooks").innerHTML =  `
+            <h1>Available Books</h1>
+            <div class="d-flex justify-content-end">
+                <button class="btn btn-primary" data-bs-toggle='modal' data-bs-target='#addBookModal'>Add Book</button>
+            </div>
+            <div class="mt-2">
+                <table class="table table-hover table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Available/Borrowed</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+                <tbody>`
+                    +tr_a+
+                `</tbody>
+                </table>
+            </div>
+
+        `;
+        }
+        function deleteBook(bookId){
+            $.post(`${apiUrl}/api/books/delete`, { user_id: user.id, book_id: bookId })
+            .done((data) => {
+                getAllBooks();
+            })
+            .fail((err) => {
+                if(err.responseJSON.result.message === MESSAGE.user_has_borrowed_books){
+                    alert('User has books to be returned')
+                }
+                else{
+                    alert('Error deleting user');
+                }
+            });
+        }
+        function getBorrowedBooksHistory(){
+            tr_bh = ""
+            $.get(`${apiUrl}/api/books/getBorrowedBooksHistory`, { user_id: user.id, role: user.role })
+            .done((data) => {
+                if(data.length){
+                    for(let i= 0; i< data.length; i++){
+                        tr_bh += `<tr>
+                                <td>${i+1}</td>
+                                <td>${data[i].username}</td>
+                                <td>${data[i].book_name}</td>
+                                <td>${data[i].issue_date}</td>
+                                <td>${data[i].return_date}</td>
+                            </tr>
+                        `
+                    }
+                }
+                else{
+                    tr_bh = `
+                        <tr><td class="text-center text-nowrap" colSpan="5">Books Borrowed History Not Awailable</td></tr>
+                    `
+                }
+                setHistoryTable()
+            })
+            .fail(function () {
+                alert('Error Fetching Books');
+            });
+        }
+        function setHistoryTable(){
+            document.getElementById("borrowedBooksHistory").innerHTML =  `
+            <h1>Borrowed Books History</h1>
+            <div>
+                <table class="table table-hover table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Username</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Issue Date</th>
+                        <th scope="col">Return Date</th>
+                    </tr>
+                </thead>
+                <tbody>`
+                    +tr_bh+
+                `</tbody>
+                </table>
+            </div>
+
+        `;
+        }
+        if(isLibrarian){
+            $.get(`${apiUrl}/api/books/getBooks`, { availableOnly: false })
+                .done((data) => {
+                    console.log(data)
+                })
+                .fail(function () {
+                    alert('Error Fetching Books');
+                });
+            getAllBooks();
+            getBorrowedBooksHistory();
+        }
+        let currentBookId = null;
+
+        function editBook(bookId, name) {
+            currentBookId = bookId;  // Store the user ID
+            $('#bookname').val(name);  // Set the username in the modal
+        }
+
+        // Function to save the edited book
+        $('#saveEditBook').on('click', function () {
+            const updatedBookname = $('#bookname').val();
+
+            $.post(`${apiUrl}/api/books/update`, {
+                user_id: user.id,
+                book_id: currentBookId,
+                name: updatedBookname
+            })
+            .done((data) => {
+                $('#editBookModal').modal('hide');  // Close the modal
+                alert('Book Updated Successfully');
+                getAllBooks();  // Refresh the user list
+            })
+            .fail(() => {
+                alert('Error updating user');
+            });
+        });
+
+        // Function to  add book
+        $('#addBook').on('click', function () {
+            const bookname = $('#name').val();
+
+            $.post(`${apiUrl}/api/books/add`, {
+                user_id: user.id,
+                bookName: bookname
+            })
+            .done((data) => {
+                $('#addBookModal').modal('hide');  // Close the modal
+                alert('Book Added Successfully');
+                getAllBooks();  // Refresh the user list
+            })
+            .fail(() => {
+                alert('Error adding book');
+            });
+        });
+    </script>
+</body>
+</html>

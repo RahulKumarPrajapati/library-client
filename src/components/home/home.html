@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<head>
+    <title>Library Management</title>
+    <link href="../../../css/bootstrap.min.css" rel="stylesheet">
+    <script src="../../../js/bootstrap.min.js"></script>
+</head>
+<body>
+    <div class=" mb-3">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+            <a class="navbar-brand" href="#">Library Management System</a>
+            <a id="loginLogout" class="navbar-brand float-right" href="/index.html">Login/SignUp</a>
+            </div>
+        </nav>
+    </div>
+    <div class="container">
+        <h1 class="text-center">Welcome Home</h1>
+        <div id="home" class="container mt-4">
+            <div id="deleteUser" class="d-flex justify-content-end"></div>
+            <div id="users"></div>
+            <div id="availableBooks"></div>
+            <div id="borrowedBooks"></div>
+            <div id="borrowedBooksHistory"></div>
+        </div>
+        
+    </div>
+    <script src="../../../js/jquery.min.js"></script>
+    <script src="../../../CONSTANT.js"></script>
+    <script src="../../../main.js"></script>
+    <script>
+        const user = JSON.parse(localStorage.getItem('user'));
+        console.log(user)
+        const isLibrarian = user.role === ROLE.LIBRARIAN ? true : false;
+        let tr_a = "", tr_b = "", tr_bh= "", tr_u ="";
+        function getAvailableBooks(){
+            tr_a = "";
+            $.get(`${apiUrl}/api/books/getBooks`, { availableOnly: true })
+                .done((data) => {
+                    if(data.length){
+                        for(let i= 0; i< data.length; i++){
+                            tr_a += `<tr>
+                                    <td>${i+1}</td>
+                                    <td>${data[i].name}</td>
+                                    <td> <button class="btn btn-primary" onclick="borrowBook('${user.id}', '${data[i]._id}')">Borrow Book </button> </td>
+                                </tr>
+                            `
+                        }
+                    }
+                    else{
+                        tr_a = `
+                            <tr><td class="text-center text-nowrap" colSpan="3">No Books Available</td></tr>
+                        `
+                    }
+                    getBooks()
+                })
+                .fail(function () {
+                    alert('Error Fetching Books');
+                });
+        }
+
+        function getBorrowedBooksByMember(){
+            tr_b = ""
+            $.get(`${apiUrl}/api/books/getBorrowedBooks`, { user_id: user.id })
+            .done((data) => {
+                if(data.length){
+                    for(let i= 0; i< data.length; i++){
+                        tr_b += `<tr>
+                                <td>${i+1}</td>
+                                <td>${data[i].name}</td>
+                                <td> <button class="btn btn-primary" onclick="returnBook('${user.id}', '${data[i]._id}')">Return Book </button></td>
+                            </tr>
+                        `
+                    }
+                }
+                else{
+                    tr_b = `
+                        <tr><td class="text-center text-nowrap" colSpan="3">No Books Borrowed</td></tr>
+                    `
+                }
+                getBorrowedBooks()
+            })
+            .fail(function () {
+                alert('Error Fetching Books');
+            });
+        }
+        function getBooks(){
+            document.getElementById("availableBooks").innerHTML =  `
+            <h1>Available Books</h1>
+            <div>
+                <table class="table table-hover table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Borrow Book</th>
+                    </tr>
+                </thead>
+                <tbody>`
+                    +tr_a+
+                `</tbody>
+                </table>
+            </div>
+
+        `;
+        }
+        function getBorrowedBooks(){
+            document.getElementById("borrowedBooks").innerHTML =  `
+            <h1>Borrowed Books</h1>
+            <div>
+                <table class="table table-hover table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Return Book</th>
+                    </tr>
+                </thead>
+                <tbody>`
+                    +tr_b+
+                `</tbody>
+                </table>
+            </div>
+
+        `;
+        }
+
+        function getBorrowedBooksHistory(){
+            tr_bh = ""
+            $.get(`${apiUrl}/api/books/getBorrowedBooksHistory`, { user_id: user.id, role: user.role })
+            .done((data) => {
+                if(data.length){
+                    for(let i= 0; i< data.length; i++){
+                        tr_bh += `<tr>
+                                <td>${i+1}</td>
+                                <td>${data[i].username}</td>
+                                <td>${data[i].book_name}</td>
+                                <td>${data[i].issue_date}</td>
+                                <td>${data[i].return_date}</td>
+                            </tr>
+                        `
+                    }
+                }
+                else{
+                    tr_bh = `
+                        <tr><td class="text-center text-nowrap" colSpan="5">Books Borrowed History Not Awailable</td></tr>
+                    `
+                }
+                setHistoryTable()
+            })
+            .fail(function () {
+                alert('Error Fetching Books');
+            });
+        }
+        function setHistoryTable(){
+            document.getElementById("borrowedBooksHistory").innerHTML =  `
+            <h1>Borrowed Books History</h1>
+            <div>
+                <table class="table table-hover table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Username</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Issue Date</th>
+                        <th scope="col">Return Date</th>
+                    </tr>
+                </thead>
+                <tbody>`
+                    +tr_bh+
+                `</tbody>
+                </table>
+            </div>
+
+        `;
+        }
+        function getAllUsers(){
+            tr_u = ""
+            $.get(`${apiUrl}/api/users/getAllUsers`, { user_id: user.id })
+            .done((data) => {
+                if(data.length){
+                    for(let i= 0; i< data.length; i++){
+                        tr_u += `<tr>
+                                <td>${i+1}</td>
+                                <td>${data[i].username}</td>
+                                <td>${data[i].deleted ? "AVAILABLE" : "DELETED"}</td>
+                            </tr>
+                        `
+                    }
+                }
+                else{
+                    tr_u = `
+                        <tr><td class="text-center text-nowrap" colSpan="3">No Members Available</td></tr>
+                    `
+                }
+                setUsersTable()
+            })
+            .fail(function () {
+                alert('Error Getting Users');
+            });
+        }
+        function setUsersTable(){
+            document.getElementById("users").innerHTML =  `
+            <h1>Member List</h1>
+            <div>
+                <table class="table table-hover table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Username</th>
+                        <th scope="col">Available/Deleted</th>
+                    </tr>
+                </thead>
+                <tbody>`
+                    +tr_u+
+                `</tbody>
+                </table>
+            </div>
+
+        `;
+        }
+        if(isLibrarian){
+            
+            document.getElementById('home').innerHTML = `
+                <h1>Hello Librarian ${user.username}</h1>
+                <a class="btn btn-primary" href="/src/components/member/member.html">Members</a>
+                <a class="btn btn-primary" href="/src/components/book/book.html">Books</a>
+            `
+        }
+        else{
+            document.getElementById('deleteUser').innerHTML = `
+                <button class="btn btn-danger" onclick="deleteUser()">Delete Account</button>
+            `;
+            getAvailableBooks();
+            getBorrowedBooksByMember(); 
+            getBorrowedBooksHistory();
+        }
+        function borrowBook(userId, bookId){
+            $.post(`${apiUrl}/api/books/assign`, { member_id: userId, book_id: bookId })
+            .done((data) => {
+                alert('Book Borrowed Successfully')
+                getAvailableBooks()
+                getBorrowedBooksByMember()
+            })
+            .fail(function () {
+                alert('Error Borrowing Books');
+            });
+        }
+        function returnBook(userId, bookId){
+            $.post(`${apiUrl}/api/books/returnBook`, { member_id: userId, book_id: bookId })
+            .done((data) => {
+                alert('Book Returned Successfully')
+                getAvailableBooks();
+                getBorrowedBooksByMember();
+                getBorrowedBooksHistory();
+            })
+            .fail(function () {
+                alert('Error Returning Book');
+            });
+        }
+        function deleteUser(){
+            console.log('selete')
+            $.post(`${apiUrl}/api/users/delete`, { user_id: user.id })
+            .done((data) => {
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('user');
+                window.location.href = '/index.html'
+            })
+            .fail((err) => {
+                if(err.responseJSON.result.message === MESSAGE.user_has_borrowed_books){
+                    alert('User has books to be returned')
+                }
+                else{
+                    alert('Error deleting user');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

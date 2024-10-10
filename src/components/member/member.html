@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<head>
+    <title>Library Management</title>
+    <link href="../../../css/bootstrap.min.css" rel="stylesheet">
+    <script src="../../../js/bootstrap.min.js"></script>
+</head>
+<body>
+    <div class=" mb-3">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+            <a class="navbar-brand" href="#">Library Management System</a>
+            <a id="loginLogout" class="navbar-brand float-right" href="/index.html">Login/SignUp</a>
+            </div>
+        </nav>
+    </div>
+    <div class="container">
+        <div id="home" class="container mt-4">
+            <div id="users"></div>
+        </div>
+        
+    </div>
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="editUserForm">
+                <div class="mb-3">
+                  <label for="username" class="form-label">Username</label>
+                  <input type="text" class="form-control" id="editUsername" required>
+                </div>
+                <div class="mb-3">
+                  <label for="status" class="form-label">Status</label>
+                  <input type="text" class="form-control" id="status" disabled>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="saveEditUser">Save changes</button>
+            </div>
+          </div>
+        </div>
+    </div>
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="addUserModalLabel">Add User</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="addUserForm">
+                <div class="mb-3">
+                  <label for="username" class="form-label">Username</label>
+                  <input type="text" class="form-control" id="username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="confirmPassword" class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control" id="confirmPassword" required>
+                  </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="addUser">Add</button>
+            </div>
+          </div>
+        </div>
+    </div>
+    <script src="../../../js/jquery.min.js"></script>
+    <script src="../../../CONSTANT.js"></script>
+    <script src="../../../main.js"></script>
+    <script>
+        const user = JSON.parse(localStorage.getItem('user'));
+        const isLibrarian = user.role === ROLE.LIBRARIAN ? true : false;
+        let tr_u ="";
+        function getAllUsers(){
+            tr_u = ""
+            $.get(`${apiUrl}/api/users/getAllUsers`, { user_id: user.id })
+            .done((data) => {
+                if(data.length){
+                    for(let i= 0; i< data.length; i++){
+                        tr_u += `<tr>
+                                <td>${i+1}</td>
+                                <td>${data[i].username}</td>
+                                <td>${data[i].deleted ? "DELETED" : "AVAILABLE"}</td>
+                                <td>${data[i].deleted ? `<button class='btn btn-primary' data-bs-toggle='modal' data-bs-target='#editUserModal' onclick="editUser('${data[i]._id}','${data[i].username}','${data[i].deleted}')">Edit</button>` : `<button class='btn btn-primary' data-bs-toggle='modal' data-bs-target='#editUserModal' onclick="editUser('${data[i]._id}','${data[i].username}','${data[i].deleted}')">Edit</button> <button class='btn btn-danger' onclick="deleteUser('${data[i]._id}')">Delete</button>`}</td>
+                            </tr>
+                        `
+                    }
+                }
+                else{
+                    tr_u = `
+                        <tr><td class="text-center text-nowrap" colSpan="4">No Members Available</td></tr>
+                    `
+                }
+                setUsersTable()
+            })
+            .fail(function () {
+                alert('Error Getting Users');
+            });
+        }
+        function setUsersTable(){
+            document.getElementById("users").innerHTML =  `
+            <h1>Member List</h1>
+            <div class="d-flex justify-content-end">
+                <button class="btn btn-primary" data-bs-toggle='modal' data-bs-target='#addUserModal'>Add User</button>
+            </div>
+            <div class="mt-2">
+                <table class="table table-hover table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Username</th>
+                        <th scope="col">Available/Deleted</th>
+                        <th scope="col">Edit/Delete</th>
+                    </tr>
+                </thead>
+                <tbody>`
+                    +tr_u+
+                `</tbody>
+                </table>
+            </div>
+
+        `;
+        }
+        if(isLibrarian){
+            $.get(`${apiUrl}/api/books/getBooks`, { availableOnly: false })
+                .done((data) => {
+                    console.log(data)
+                })
+                .fail(function () {
+                    alert('Error Fetching Books');
+                });
+            getAllUsers();
+        }
+        function deleteUser(userId){
+            $.post(`${apiUrl}/api/users/delete`, { user_id: userId })
+            .done((data) => {
+                getAllUsers();
+            })
+            .fail((err) => {
+                if(err.responseJSON.result.message === MESSAGE.user_has_borrowed_books){
+                    alert('User has books to be returned')
+                }
+                else{
+                    alert('Error deleting user');
+                }
+            });
+        }
+
+        let currentUserId = null;
+
+        function editUser(userId, username, status) {
+            currentUserId = userId;  // Store the user ID
+            status = status == 'true' ? 'DELETED' : 'AVAILABLE'
+            $('#editUsername').val(username);  // Set the username in the modal
+            $('#status').val(status);  // Set the status
+        }
+
+        // Function to save the edited user
+        $('#saveEditUser').on('click', function () {
+            const updatedUsername = $('#editUsername').val();
+
+            $.post(`${apiUrl}/api/users/update`, {
+                user_id: user.id,
+                member_id: currentUserId,
+                username: updatedUsername
+            })
+            .done((data) => {
+                $('#editUserModal').modal('hide');  // Close the modal
+                alert('User Updated Successfully');
+                getAllUsers();  // Refresh the user list
+            })
+            .fail(() => {
+                alert('Error updating user');
+            });
+        });
+        // Function to  add user
+        $('#addUser').on('click', function () {
+            const username = $('#username').val();
+            const password = $('#password').val();
+            const confirmPassword = $('#confirmPassword').val();
+
+            if(password !== confirmPassword){
+                alert('Password and Confirm Password must match')
+            }
+            else{
+                $.post(`${apiUrl}/api/users/add`, {
+                    user_id: user.id,
+                    username: username,
+                    password: password
+                })
+                .done((data) => {
+                    $('#addUserModal').modal('hide');
+                    alert('User Added Successfully');
+                    getAllUsers();
+                })
+                .fail(() => {
+                    alert('Error adding user');
+                });
+            }
+            
+        });
+    </script>
+</body>
+</html>
