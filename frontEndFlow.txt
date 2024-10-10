@@ -1,0 +1,16 @@
+Front End Flow
+
+1. User can login and register for difeernet roles i.e., LIBRARIAN and MEMBER.
+2. If LIBRARIAN'S Login
+    1. Opens up a page that has two buttons one for Books and another for Menbers.
+    2. On clicking to Members page your can see list of all active and deleted menbers.
+    3. You can add,edit and delete members.
+    4. Member cannot be deleted if he/she has books to be returned.
+    5. On clicking on Books button you can see Borrowed books history table and all available books.
+    6. Your can add,edd and delete books here.
+3. If MEMBER'S Login
+    1. Opens up a page where 3 tables and a button can be seen.
+    2. First table show available books which MEMBER can borrow.
+    3. Second table shows currently borrowed books by the user. MEMBER can return Borrowed books from here.
+    4. Third table shows Borrowed book history of the MEMBER.
+    5. You can see a Delete Account button which deletes MEMBER account. Account will not be deleted if the MEMBER has books to be returned. 
